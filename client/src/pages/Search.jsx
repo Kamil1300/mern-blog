@@ -1,6 +1,7 @@
-import { TextInput,Select } from 'flowbite-react'
+import { TextInput,Select, Button } from 'flowbite-react'
 import React, { useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
+import PostCard from '../components/PostCard'
 
 export default function Search() {
     const [sidebarData, setSidebarData] = useState({
@@ -13,9 +14,12 @@ export default function Search() {
 
     const [posts, setPosts] = useState([])
     const [loading, setLoading] = useState(false)
-    const [show, setShowMore] = useState(false)
+    const [showMore, setShowMore] = useState(false)
 
     const location = useLocation()
+
+    const navigate = useNavigate()
+
     useEffect(() => {
         const urlParams = new URLSearchParams(location.search)
         const searchTermFromUrl = urlParams.get('searchTerm')
@@ -72,6 +76,29 @@ export default function Search() {
         urlParams.set('searchTerm',sidebarData.searchTerm)
         urlParams.set('sort',sidebarData.sort)
         urlParams.set('category',sidebarData.category)
+        const searchQuery = urlParams.toString()
+        navigate(`/search?${searchQuery}`)
+    }
+
+    const handleShowMore = async() => {
+        const numberOfPosts = posts.length
+        const startIndex = numberOfPosts
+        const urlParams = new URLSearchParams(location.search)
+        urlParams.set('startIndex',startIndex)
+        const searchQuery = urlParams.toString()
+        const res =  await fetch(`/api/post/getposts?${searchQuery}`)
+        if(!res.ok){
+            return
+        }
+        if(res.ok){
+            const data = await res.json()
+            setPosts([...posts,...data.posts])
+            if(data.posts.length === 9){
+                setShowMore(true)
+            }else{
+                setShowMore(false)
+            }
+        }
     }
 
     return (
@@ -100,8 +127,29 @@ export default function Search() {
                             <option value="javascript">JavaScript</option>
                         </Select>
                     </div>
-
+                    <Button type='submit' outline gradientDuoTone="purpleToPink">Apply Filters</Button>
                 </form>
+            </div>
+            <div className='w-full'>
+                <h1 className='text-3xl font-semibold sm:border-b border-gray-500 p-3 mt-5'>Posts results:</h1>
+                <div className='p-7 flex flex-wrap gap-4'>
+                    {
+                        !loading && posts.length === 0 && (<p className='text-xl text-gray-500'>No posts found.</p>
+                    )}
+                    {
+                        loading && <p className='text-xl text-gray-500'>Loading...</p>
+                    }
+                    {
+                        !loading && posts && posts.map((post) =>
+                            <PostCard key={post.id} post={post}/>
+                        )
+                    }
+                    {
+                        showMore && <button onClick={handleShowMore} className='text-teal-500 text-lg hover:underline p-7 w-full'>
+                            Show More
+                        </button>
+                    }
+                </div>
             </div>
         </div>
     )
